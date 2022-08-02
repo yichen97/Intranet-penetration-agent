@@ -1,52 +1,48 @@
 package com.fanruan;
 
-import com.fanruan.cache.DataSourceCache;
-import com.fanruan.exception.ParamException;
-import com.fanruan.pojo.MyDataSource;
-import com.fanruan.pojo.message.MessageSQL;
-import com.fanruan.pojo.message.SimpleMessage;
-import com.fanruan.utils.CodeMsg;
-import com.fanruan.utils.GlobalExceptionHandler;
-import com.fanruan.utils.QueryUtil;
-import com.fanruan.utils.ResultSetAdapter;
+import com.fanruan.handler.MyDispatcher;
+import com.fanruan.pojo.message.RpcRequest;
+import com.fanruan.serializer.KryoSerializer;
+import com.fanruan.serializer.Serializer;
 import com.google.gson.Gson;
 import io.socket.client.IO;
 import io.socket.client.Socket;
 import io.socket.engineio.client.transports.WebSocket;
+import okhttp3.Dispatcher;
+import okhttp3.OkHttpClient;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.io.UnsupportedEncodingException;
+import java.lang.reflect.InvocationTargetException;
 import java.net.URI;
-import java.sql.ResultSet;
-import java.sql.SQLException;
 import java.util.Properties;
+import java.util.concurrent.TimeUnit;
 
 
 public class AgentStarter {
+
     protected static final Logger logger = LogManager.getLogger();
 
     public static final Gson gson = new Gson();
 
-    public static DataSourceCache cache;
+    public final static Serializer serializer = new KryoSerializer();
 
-    public static Socket socket;
+    public static MyDispatcher myDispatcher;
 
-    public static QueryUtil queryUtil;
+    public AgentStarter(String[] DBs) {
+        this.myDispatcher = new MyDispatcher();
 
-    public AgentStarter() {
         try {
-            loadConfig();
-            bootStrap();
+            createSocket(DBs);
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
-    private void loadConfig() throws IOException {
+    private void createSocket(String[] DBs) throws IOException {
         logger.debug("加载配置");
         IO.Options options = new IO.Options();
         try{
@@ -62,69 +58,77 @@ public class AgentStarter {
             options.reconnectionDelay = Integer.parseInt(props.getProperty("reconnectionDelay"));
             options.timeout = Integer.parseInt(props.getProperty("timeout"));
             String uri = props.getProperty("uri");
-
             in.close();
 
-            this.socket = IO.socket(URI.create(uri), options);
-            this.cache = new DataSourceCache();
-            this.queryUtil = new QueryUtil();
+            // config the max number of socket
+            int MAX_CLIENTS = 10;
+            Dispatcher dispatcher = new Dispatcher();
+            dispatcher.setMaxRequests(MAX_CLIENTS * 2);
+            dispatcher.setMaxRequestsPerHost(MAX_CLIENTS * 2);
+
+            OkHttpClient okHttpClient = new OkHttpClient.Builder()
+                    .dispatcher(dispatcher)
+                    .readTimeout(1, TimeUnit.MINUTES) // important for HTTP long-polling
+                    .build();
+
+            options.callFactory = okHttpClient;
+            options.webSocketFactory = okHttpClient;
+
+            Socket defaultSocket = IO.socket(URI.create(uri), options);
+            this.myDispatcher.registerSocket("/", defaultSocket);
+            configDefaultSocket(defaultSocket);
+
+            for(String dbName : DBs){
+                Socket socket = IO.socket(URI.create(uri + "/" + dbName), options);
+                this.myDispatcher.registerSocket(dbName, socket);
+                configSocket(socket, dbName);
+            }
 
         }catch (Exception e){
             e.printStackTrace();
         }
     }
 
-    private void bootStrap(){
+    private void configDefaultSocket(Socket socket) throws IOException {
         socket.on(Socket.EVENT_CONNECT, objects -> {
-            logger.info("client connected!");
+            logger.info("default-socket connected!");
         });
 
         socket.on(Socket.EVENT_CONNECT_ERROR, objects -> {
-            logger.info("connect error: " +  objects[0].toString());
+            logger.info("default-socket error: " +  objects[0].toString());
         });
 
         socket.on(Socket.EVENT_DISCONNECT, objects -> {
             for(Object obj : objects){
-                logger.info("connection closed: " + obj.toString());
+                logger.info("default-socket closed: " + obj.toString());
+            }
+        });
+    }
+
+    private void configSocket(Socket socket, String dbName) throws IOException {
+        socket.on(Socket.EVENT_CONNECT, objects -> {
+            logger.info(dbName + "-socket connected!");
+        });
+
+        socket.on(Socket.EVENT_DISCONNECT, objects -> {
+            for(Object obj : objects){
+                logger.info(dbName + "-socket closed: " + obj.toString());
             }
         });
 
-        socket.on("ClientReceive", objects -> {
-            logger.info("ClientReceive: " + objects[0].toString());
-            SimpleMessage msg = new SimpleMessage("Ready to Register");
-            socket.emit("DataSource", gson.toJson(msg));
+        socket.on(Socket.EVENT_CONNECT_ERROR, objects -> {
+            logger.info(dbName + "-socket error: " +  objects[0].toString());
         });
 
-        // 数据源注册事件
-        socket.on("DataSource", objects -> {
-            logger.info("DataSource : " + objects[0]);
-            MyDataSource dataSource = gson.fromJson(objects[0].toString(), MyDataSource.class);
-            try {
-                queryUtil.saveDataSource(dataSource);
-            }catch (Exception e){
-                if(e instanceof ClassNotFoundException){
-                    GlobalExceptionHandler.sendException(new ParamException(CodeMsg.DRIVER_NOTFOUND));
-                }
+        socket.on("RPCRequest", objects -> {
+            RpcRequest rpcRequest = serializer.deserialize((byte[]) objects[0], RpcRequest.class);
+            logger.debug(dbName + "-RPCRequest: " + rpcRequest.toString());
 
-            }
-            SimpleMessage msg = new SimpleMessage("Ready to Query");
-            socket.emit("DataSourceReady", msg);
-        });
-
-        // 查询事件
-        socket.on("QueryEvent", objects -> {
-            MessageSQL messageSQL = gson.fromJson(objects[0].toString(), MessageSQL.class);
             try {
-                ResultSet rs = queryUtil.executeSQL(messageSQL.getDBName(), messageSQL.getSQL());
-                ResultSetAdapter rsa = new ResultSetAdapter();
-                String result = rsa.toJson(rs);
-                logger.info("ResultSet: " + result);
-                socket.emit("ReturnData",  result);
-            } catch (SQLException e) {
+                myDispatcher.doDispatch(rpcRequest, dbName);
+            } catch (Exception e) {
                 e.printStackTrace();
             }
         });
-        socket.connect();
     }
-
 }
