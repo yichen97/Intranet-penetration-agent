@@ -27,11 +27,11 @@ public class BeanCache {
     }
 
     public void saveSingleton(String name, Object o){
-        resultSetCache.put(name, o);
+        singletonCache.put(name, o);
     }
 
     public boolean containsSingleton(String name){
-        return resultSetCache.containsKey(name);
+        return singletonCache.containsKey(name);
     }
 
     public ResultSet getResult(String sql){

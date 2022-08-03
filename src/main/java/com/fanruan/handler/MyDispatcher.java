@@ -24,7 +24,7 @@ public class MyDispatcher {
     // stored class instance by dataBase name
     private static Map<String, BeanCache> DBCache = new ConcurrentHashMap<>();
 
-    private static NotifyHandler notifyHandler = new NotifyHandler();
+    private static Handler handler = new Handler();
 
     static {
         DBCache.put(DBProperties.MYSQL, new BeanCache(DBProperties.MYSQL_DRIVER_NAME));
@@ -43,7 +43,7 @@ public class MyDispatcher {
             throw new RuntimeException("the class name invoked is wrong");
         }
         invokeAsRequest(rpcRequest, beanCache);
-        notifyHandler.sendOk(socketCache.get(dbName));
+        handler.sendOk(socketCache.get(dbName), rpcRequest);
 
     }
 
@@ -76,6 +76,7 @@ public class MyDispatcher {
 
         Method method = clazz.getDeclaredMethod(methodName, argTypes);
         Object res = method.invoke(calledClassInstance, args);
+        beanCache.saveSingleton(res.getClass().getName(), res);
         logger.info("调用" + className + "的" + methodName + " 方法生成 "+ res.getClass());
     }
 

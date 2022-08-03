@@ -1,5 +1,7 @@
 package com.fanruan.myJDBC.driver;
 
+import com.fanruan.myJDBC.connection.MyConnection;
+
 import java.sql.*;
 import java.util.Properties;
 import java.util.logging.Logger;
@@ -22,7 +24,7 @@ public class MyDriver implements Driver {
 
     @Override
     public Connection connect(String url, Properties info) throws SQLException {
-        return DriverManager.getConnection(url, info);
+        return new MyConnection(DriverManager.getConnection(url, info));
     }
 
     // URL的正确性交给Agent验证
