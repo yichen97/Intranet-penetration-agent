@@ -1,8 +1,11 @@
 package com.fanruan.handler;
 
+import com.fanruan.AgentStarter;
 import com.fanruan.cache.BeanCache;
 import com.fanruan.exception.ParamException;
+import com.fanruan.myJDBC.resultSet.MyResultSet;
 import com.fanruan.pojo.message.RpcRequest;
+import com.fanruan.pojo.message.RpcResponse;
 import com.fanruan.utils.DBProperties;
 import io.socket.client.Socket;
 import org.apache.logging.log4j.LogManager;
@@ -42,12 +45,17 @@ public class MyDispatcher {
         if(beanCache == null){
             throw new RuntimeException("the class name invoked is wrong");
         }
-        invokeAsRequest(rpcRequest, beanCache);
-        handler.sendOk(socketCache.get(dbName), rpcRequest);
 
+        Object res = invokeAsRequest(rpcRequest, beanCache);
+
+        if(rpcRequest.isReply()){
+            handler.replyWithData(socketCache.get(dbName), rpcRequest, res);
+        }else{
+            handler.sendOk(socketCache.get(dbName), rpcRequest);
+        }
     }
 
-    public void invokeAsRequest(RpcRequest rpcRequest, BeanCache beanCache) throws NoSuchMethodException, InvocationTargetException, IllegalAccessException {
+    public Object invokeAsRequest(RpcRequest rpcRequest, BeanCache beanCache) throws NoSuchMethodException, InvocationTargetException, IllegalAccessException {
         Class clazz = rpcRequest.getServiceClass();
         String methodName = rpcRequest.getMethodName();
         Object[] args = rpcRequest.getArgs();
@@ -59,8 +67,15 @@ public class MyDispatcher {
         String className = getClassName(fullName);
 
         // Result 实例以 SQL 语句作为键缓存
-        if("MyResult".equals(className)){
-            logger.info("invoke method in Result");
+        if("MyResultSet".equals(className)){
+            //将附在参数末尾的sql取下来, 将参数恢复
+            String sql = (String) args[args.length-1];
+            Object[] tmp = new Object[args.length-1];
+            for(int i=0; i<tmp.length; i++){
+                tmp[i] = args[i];
+            }
+            args = tmp;
+            calledClassInstance = beanCache.getResult(sql);
         }else{
             calledClassInstance = beanCache.getSingleton(fullName, clazz);
             if(calledClassInstance == null){
@@ -73,14 +88,53 @@ public class MyDispatcher {
                 beanCache.saveSingleton(fullName, calledClassInstance);
             }
         }
-
-        Method method = clazz.getDeclaredMethod(methodName, argTypes);
+        Method method;
+        try {
+            // 类型在传输时被自动装包为包装类型，在反射调用以原始变量为参数的方法时会报错
+            method = clazz.getDeclaredMethod(methodName, argTypes);
+        }catch (Exception e){
+            for(int i=0; i<argTypes.length; i++){
+                Class clz = argTypes[i];
+                if(DispatcherHelper.isWraps(clz)){
+                    argTypes[i] = DispatcherHelper.castToPrimitiveClass(clz);
+                }
+            }
+            method = clazz.getDeclaredMethod(methodName, argTypes);
+        }
         Object res = method.invoke(calledClassInstance, args);
-        beanCache.saveSingleton(res.getClass().getName(), res);
+
+        String resClassName = res.getClass().getName();
+
+        // 每个连接可能都有多个ResultSet类， 需要根据sql进行缓存。
+        if(isInCacheList(resClassName)) {
+            if("com.fanruan.myJDBC.resultSet.MyResultSet".equals(resClassName)){
+                beanCache.saveResult((String) args[0], res);
+            } else {
+                beanCache.saveSingleton(resClassName, res);
+            }
+        }
+
         logger.info("调用" + className + "的" + methodName + " 方法生成 "+ res.getClass());
+
+        return res;
     }
 
 
+    public boolean isInCacheList(String className){
+        String[] cacheList = new String[]{
+                "com.fanruan.myJDBC.connection.MyConnection",
+                "com.fanruan.myJDBC.statement.MyStatement",
+                "com.fanruan.myJDBC.resultSet.MyResultSet",
+        };
+
+        for(String s : cacheList){
+            if(s.equals(className)){
+                return true;
+            }
+        }
+
+        return false;
+    }
 
     public String getClassName(String fullyQualifiedClassName){
         String[] arr = fullyQualifiedClassName.split("\\.");

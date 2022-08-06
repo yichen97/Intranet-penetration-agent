@@ -1,5 +1,6 @@
 package com.fanruan.myJDBC.statement;
 
+import com.fanruan.myJDBC.resultSet.MyResultSet;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -9,7 +10,6 @@ public class MyStatement implements Statement {
     protected static final Logger logger = LogManager.getLogger();
 
     private Statement st;
-    private String sql;
 
 
     public MyStatement(Statement statement) {
@@ -20,8 +20,8 @@ public class MyStatement implements Statement {
     @Override
     public ResultSet executeQuery(String sql) throws SQLException {
         if(isClosed()) throw new SQLException("This Statement is closed.");
-        ResultSet rs = st.executeQuery(sql);
-        return (ResultSet) rs;
+        ResultSet rs = new MyResultSet(st.executeQuery(sql));
+        return rs;
     }
 
     @Override
@@ -31,12 +31,12 @@ public class MyStatement implements Statement {
 
     @Override
     public void close() throws SQLException {
-
+        st.close();
     }
 
     @Override
     public int getMaxFieldSize() throws SQLException {
-        return 0;
+        return st.getMaxFieldSize();
     }
 
     @Override
@@ -46,7 +46,7 @@ public class MyStatement implements Statement {
 
     @Override
     public int getMaxRows() throws SQLException {
-        return 0;
+        return st.getMaxRows();
     }
 
     @Override
@@ -61,7 +61,7 @@ public class MyStatement implements Statement {
 
     @Override
     public int getQueryTimeout() throws SQLException {
-        return 0;
+        return st.getQueryTimeout();
     }
 
     @Override
@@ -96,7 +96,7 @@ public class MyStatement implements Statement {
 
     @Override
     public ResultSet getResultSet() throws SQLException {
-        return null;
+        return st.getResultSet();
     }
 
     @Override
@@ -156,7 +156,7 @@ public class MyStatement implements Statement {
 
     @Override
     public Connection getConnection() throws SQLException {
-        return null;
+        return st.getConnection();
     }
 
     @Override

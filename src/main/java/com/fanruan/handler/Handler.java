@@ -16,4 +16,13 @@ public class Handler {
         byte[] bytes = AgentStarter.serializer.serialize(rpcResponse);
         socket.emit("RPCResponse", bytes);
     }
+
+    public static void replyWithData(Socket socket, RpcRequest rpcRequest, Object res){
+        RpcResponse rpcResponse = new RpcResponse();
+        rpcResponse.setID(rpcRequest.getID())
+                .setStatus(true)
+                .setResult(res);
+        byte[] bytes = AgentStarter.serializer.serialize(rpcResponse);
+        socket.emit("RPCResponse", bytes);
+    }
 }

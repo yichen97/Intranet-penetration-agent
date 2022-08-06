@@ -123,7 +123,6 @@ public class AgentStarter {
         socket.on("RPCRequest", objects -> {
             RpcRequest rpcRequest = serializer.deserialize((byte[]) objects[0], RpcRequest.class);
             logger.debug(dbName + "-RPCRequest: " + rpcRequest.toString());
-
             try {
                 myDispatcher.doDispatch(rpcRequest, dbName);
             } catch (Exception e) {

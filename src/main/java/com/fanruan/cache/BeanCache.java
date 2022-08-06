@@ -1,5 +1,7 @@
 package com.fanruan.cache;
 
+import com.fanruan.myJDBC.resultSet.MyResultSet;
+
 import java.sql.ResultSet;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -38,8 +40,9 @@ public class BeanCache {
         return (ResultSet) resultSetCache.get(sql);
     }
 
-    public void saveResult(String sql, ResultSet rs){
-        resultSetCache.put(sql, rs);
+    public void saveResult(String sql, Object rs){
+        if(!(rs instanceof MyResultSet)) throw new ClassCastException();
+        resultSetCache.put(sql, (MyResultSet) rs);
     }
 
     public boolean containsResultSet(String sql){
