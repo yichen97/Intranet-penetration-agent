@@ -1,6 +1,7 @@
 package com.fanruan.myJDBC.connection;
 
 import com.fanruan.myJDBC.MyDataBaseMetaData;
+import com.fanruan.myJDBC.statement.MyPreparedStatement;
 import com.fanruan.myJDBC.statement.MyStatement;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -28,7 +29,9 @@ public class MyConnection implements Connection {
 
     @Override
     public PreparedStatement prepareStatement(String sql) throws SQLException {
-        return null;
+        PreparedStatement pst = this.conn.prepareStatement(sql);
+        MyPreparedStatement myPst = new MyPreparedStatement(pst);
+        return myPst;
     }
 
     @Override

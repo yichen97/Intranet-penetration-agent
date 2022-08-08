@@ -1,11 +1,8 @@
 package com.fanruan.handler;
 
-import com.fanruan.AgentStarter;
+
 import com.fanruan.cache.BeanCache;
-import com.fanruan.exception.ParamException;
-import com.fanruan.myJDBC.resultSet.MyResultSet;
 import com.fanruan.pojo.message.RpcRequest;
-import com.fanruan.pojo.message.RpcResponse;
 import com.fanruan.utils.DBProperties;
 import io.socket.client.Socket;
 import org.apache.logging.log4j.LogManager;
@@ -15,6 +12,7 @@ import org.apache.logging.log4j.Logger;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Type;
+import java.sql.ResultSet;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -28,6 +26,15 @@ public class MyDispatcher {
     private static Map<String, BeanCache> DBCache = new ConcurrentHashMap<>();
 
     private static Handler handler = new Handler();
+
+    private final static String[] cacheList = new String[]{
+            "com.fanruan.myJDBC.driver.MyDriver",
+            "com.fanruan.myJDBC.connection.MyConnection",
+            "com.fanruan.myJDBC.statement.MyStatement",
+            "com.fanruan.myJDBC.statement.MyPreparedStatement",
+            "com.fanruan.myJDBC.resultSet.MyResultSet",
+
+    };
 
     static {
         DBCache.put(DBProperties.MYSQL, new BeanCache(DBProperties.MYSQL_DRIVER_NAME));
@@ -50,7 +57,7 @@ public class MyDispatcher {
 
         if(rpcRequest.isReply()){
             handler.replyWithData(socketCache.get(dbName), rpcRequest, res);
-        }else{
+        }else {
             handler.sendOk(socketCache.get(dbName), rpcRequest);
         }
     }
@@ -61,36 +68,33 @@ public class MyDispatcher {
         Object[] args = rpcRequest.getArgs();
         Class[] argTypes = rpcRequest.getArgTypes();
         Object calledClassInstance = null;
+        // The ID of the rpcRequest could be save as the ID of an instance
+        // Because one instance can only been create just once for an unique rpcRequest
+        String IDtoCache = rpcRequest.getID();
+        String IDtoInvoke = rpcRequest.getIDtoInvoke();
 
         // 缓存中取类实例，若没有则创建
         String fullName = clazz.getName();
         String className = getClassName(fullName);
 
-        // Result 实例以 SQL 语句作为键缓存
-        if("MyResultSet".equals(className)){
-            //将附在参数末尾的sql取下来, 将参数恢复
-            String sql = (String) args[args.length-1];
-            Object[] tmp = new Object[args.length-1];
-            for(int i=0; i<tmp.length; i++){
-                tmp[i] = args[i];
+        // If BeanCache contains instance, get it; if not, create it.
+        if(IDtoInvoke == null){
+            try{
+                // create
+                calledClassInstance = Class.forName(fullName).newInstance();
+            }catch (Exception e) {
+                e.printStackTrace();
             }
-            args = tmp;
-            calledClassInstance = beanCache.getResult(sql);
+                beanCache.cacheInstance(IDtoCache, calledClassInstance);
         }else{
-            calledClassInstance = beanCache.getSingleton(fullName, clazz);
-            if(calledClassInstance == null){
-                try{
-                    // 创建被调用类实例
-                    calledClassInstance = Class.forName(fullName).newInstance();
-                }catch (Exception e){
-                    e.printStackTrace();
-                }
-                beanCache.saveSingleton(fullName, calledClassInstance);
-            }
+            calledClassInstance = beanCache.getCachedInstances(IDtoInvoke, clazz);
         }
+
         Method method;
+
         try {
-            // 类型在传输时被自动装包为包装类型，在反射调用以原始变量为参数的方法时会报错
+            // The primitive variable's type will be automatically packaged when passed as a class object,
+            // And an error will be reported when the method with the primitive variable as the parameter is called
             method = clazz.getDeclaredMethod(methodName, argTypes);
         }catch (Exception e){
             for(int i=0; i<argTypes.length; i++){
@@ -101,38 +105,30 @@ public class MyDispatcher {
             }
             method = clazz.getDeclaredMethod(methodName, argTypes);
         }
+
         Object res = method.invoke(calledClassInstance, args);
 
-        String resClassName = res.getClass().getName();
-
-        // 每个连接可能都有多个ResultSet类， 需要根据sql进行缓存。
-        if(isInCacheList(resClassName)) {
-            if("com.fanruan.myJDBC.resultSet.MyResultSet".equals(resClassName)){
-                beanCache.saveResult((String) args[0], res);
-            } else {
-                beanCache.saveSingleton(resClassName, res);
+        // Cached some instances need to be invoke later.
+        // Some method return null, so determine the value of `res` before referencing it.
+        if(res != null){
+            String resClassName = res.getClass().getName();
+            if(isInCacheList(resClassName)) {
+                beanCache.cacheInstance(rpcRequest.getID(), res);
             }
+            logger.info("调用" + className + "的" + methodName + " 方法,返回" + res.getClass().getName());
+        }else{
+            logger.info("调用" + className + "的" + methodName + " 方法,无返回值");
         }
-
-        logger.info("调用" + className + "的" + methodName + " 方法生成 "+ res.getClass());
-
         return res;
     }
 
 
     public boolean isInCacheList(String className){
-        String[] cacheList = new String[]{
-                "com.fanruan.myJDBC.connection.MyConnection",
-                "com.fanruan.myJDBC.statement.MyStatement",
-                "com.fanruan.myJDBC.resultSet.MyResultSet",
-        };
-
         for(String s : cacheList){
             if(s.equals(className)){
                 return true;
             }
         }
-
         return false;
     }
 

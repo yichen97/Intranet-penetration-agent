@@ -5,10 +5,12 @@ import lombok.experimental.Accessors;
 
 @Data
 @Accessors(chain = true)
-public class RpcRequest<T> {
+public class RpcRequest {
     private boolean reply;
     private String ID;
-    private Class<T> ServiceClass;
+    private boolean binding;
+    private String IDtoInvoke;
+    private Class ServiceClass;
     private String MethodName;
     private Object[] args;
     private Class[] argTypes;

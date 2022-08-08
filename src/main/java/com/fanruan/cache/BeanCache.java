@@ -12,40 +12,26 @@ public class BeanCache {
     /**
      * cache those instances asked to be established by RPCrequest
      */
-    private static Map<String, Object> singletonCache = new ConcurrentHashMap<>();
-    private static Map<String, Object> resultSetCache = new ConcurrentHashMap<>();
+    private static Map<String, Object> cache = new ConcurrentHashMap<>();
 
     public BeanCache(String dbName){
         this.dbName = dbName;
     }
 
-    public <T> T getSingleton(String name, Class<T> clazz){
+    public <T> T getCachedInstances(String ID, Class<T> clazz){
         try {
-            return  clazz.cast(singletonCache.get(name));
+            return  clazz.cast(cache.get(ID));
         }catch (Exception e){
             e.printStackTrace();
         }
         return null;
     }
 
-    public void saveSingleton(String name, Object o){
-        singletonCache.put(name, o);
+    public void cacheInstance(String ID, Object o){
+        cache.put(ID, o);
     }
 
-    public boolean containsSingleton(String name){
-        return singletonCache.containsKey(name);
-    }
-
-    public ResultSet getResult(String sql){
-        return (ResultSet) resultSetCache.get(sql);
-    }
-
-    public void saveResult(String sql, Object rs){
-        if(!(rs instanceof MyResultSet)) throw new ClassCastException();
-        resultSetCache.put(sql, (MyResultSet) rs);
-    }
-
-    public boolean containsResultSet(String sql){
-        return resultSetCache.containsKey(sql);
+    public boolean containsInstance(String name){
+        return cache.containsKey(name);
     }
 }

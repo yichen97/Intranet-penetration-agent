@@ -12,6 +12,7 @@ public class Handler {
         RpcResponse rpcResponse = new RpcResponse();
         rpcResponse.setResult(null)
                 .setID(rpcRequest.getID())
+                .setBinding(rpcRequest.isBinding())
                 .setStatus(true);
         byte[] bytes = AgentStarter.serializer.serialize(rpcResponse);
         socket.emit("RPCResponse", bytes);

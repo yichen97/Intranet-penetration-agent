@@ -7,7 +7,6 @@ import org.apache.logging.log4j.Logger;
 import java.sql.*;
 
 public class MyStatement implements Statement {
-    protected static final Logger logger = LogManager.getLogger();
 
     private Statement st;
 
@@ -19,7 +18,6 @@ public class MyStatement implements Statement {
 
     @Override
     public ResultSet executeQuery(String sql) throws SQLException {
-        if(isClosed()) throw new SQLException("This Statement is closed.");
         ResultSet rs = new MyResultSet(st.executeQuery(sql));
         return rs;
     }
