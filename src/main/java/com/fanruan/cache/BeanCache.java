@@ -27,6 +27,10 @@ public class BeanCache {
         return null;
     }
 
+    public void removeInstances(String ID){
+       cache.remove(ID);
+    }
+
     public void cacheInstance(String ID, Object o){
         cache.put(ID, o);
     }

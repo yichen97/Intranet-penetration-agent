@@ -26,11 +26,11 @@ public class AgentStarter {
 
     protected static final Logger logger = LogManager.getLogger();
 
-    public static final Gson gson = new Gson();
-
     public final static Serializer serializer = new KryoSerializer();
 
     public static MyDispatcher myDispatcher;
+
+    public static String AgentID;
 
     public AgentStarter(String[] DBs) {
         this.myDispatcher = new MyDispatcher();
@@ -55,6 +55,7 @@ public class AgentStarter {
             options.transports = new String[]{WebSocket.NAME};
             options.reconnectionAttempts = Integer.parseInt(props.getProperty("reconnectionAttempts"));
             options.query = "agentID=" + props.getProperty("agentID");
+            AgentID = props.getProperty("agentID");
             options.reconnectionDelay = Integer.parseInt(props.getProperty("reconnectionDelay"));
             options.timeout = Integer.parseInt(props.getProperty("timeout"));
             String uri = props.getProperty("uri");

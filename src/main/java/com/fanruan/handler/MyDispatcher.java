@@ -13,6 +13,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Type;
 import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -53,7 +54,14 @@ public class MyDispatcher {
             throw new RuntimeException("the class name invoked is wrong");
         }
 
-        Object res = invokeAsRequest(rpcRequest, beanCache);
+        Object res = null;
+        try {
+            res = invokeAsRequest(rpcRequest, beanCache);
+        }catch (Exception e){
+            if (e instanceof Exception){
+                handler.sendError(socketCache.get(dbName), rpcRequest, e);
+            }
+        }
 
         if(rpcRequest.isReply()){
             handler.replyWithData(socketCache.get(dbName), rpcRequest, res);
@@ -62,7 +70,7 @@ public class MyDispatcher {
         }
     }
 
-    public Object invokeAsRequest(RpcRequest rpcRequest, BeanCache beanCache) throws NoSuchMethodException, InvocationTargetException, IllegalAccessException {
+    public Object invokeAsRequest(RpcRequest rpcRequest, BeanCache beanCache) throws NoSuchMethodException, InvocationTargetException, IllegalAccessException, SQLException{
         Class clazz = rpcRequest.getServiceClass();
         String methodName = rpcRequest.getMethodName();
         Object[] args = rpcRequest.getArgs();
@@ -106,7 +114,12 @@ public class MyDispatcher {
             method = clazz.getDeclaredMethod(methodName, argTypes);
         }
 
+
         Object res = method.invoke(calledClassInstance, args);
+
+        if("close".equals(methodName)){
+            beanCache.removeInstances(IDtoInvoke);
+        }
 
         // Cached some instances need to be invoke later.
         // Some method return null, so determine the value of `res` before referencing it.
