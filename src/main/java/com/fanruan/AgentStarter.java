@@ -4,7 +4,6 @@ import com.fanruan.handler.MyDispatcher;
 import com.fanruan.pojo.message.RpcRequest;
 import com.fanruan.serializer.KryoSerializer;
 import com.fanruan.serializer.Serializer;
-import com.google.gson.Gson;
 import io.socket.client.IO;
 import io.socket.client.Socket;
 import io.socket.engineio.client.transports.WebSocket;

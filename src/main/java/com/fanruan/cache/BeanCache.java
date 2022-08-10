@@ -1,8 +1,5 @@
 package com.fanruan.cache;
 
-import com.fanruan.myJDBC.resultSet.MyResultSet;
-
-import java.sql.ResultSet;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 

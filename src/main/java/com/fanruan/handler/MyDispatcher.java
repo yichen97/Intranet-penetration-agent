@@ -128,9 +128,9 @@ public class MyDispatcher {
             if(isInCacheList(resClassName)) {
                 beanCache.cacheInstance(rpcRequest.getID(), res);
             }
-            logger.info("调用" + className + "的" + methodName + " 方法,返回" + res.getClass().getName());
+            logger.info("invoke" + className + "-" + methodName + " and return a instance of" + res.getClass().getName());
         }else{
-            logger.info("调用" + className + "的" + methodName + " 方法,无返回值");
+            logger.info("invoke" + className + "-" + methodName + " and no return value");
         }
         return res;
     }
