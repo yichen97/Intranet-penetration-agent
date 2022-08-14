@@ -6,7 +6,7 @@ import java.sql.*;
 import java.util.Properties;
 import java.util.logging.Logger;
 
-
+// 驱动在静态代码块中注册，难以代理
 public class MyDriver implements Driver {
 
 
@@ -27,8 +27,6 @@ public class MyDriver implements Driver {
         return new MyConnection(DriverManager.getConnection(url, info));
     }
 
-    // URL的正确性交给Agent验证
-    // 后续需要完善，通过Agent返回的错误消息进行更新
     @Override
     public boolean acceptsURL(String url) throws SQLException {
         return true;
