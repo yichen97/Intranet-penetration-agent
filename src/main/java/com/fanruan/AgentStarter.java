@@ -33,7 +33,6 @@ public class AgentStarter {
 
     public AgentStarter(String[] DBs) {
         this.myDispatcher = new MyDispatcher();
-
         try {
             createSocket(DBs);
         } catch (Exception e) {

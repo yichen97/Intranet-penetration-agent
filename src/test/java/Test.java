@@ -18,20 +18,26 @@ public class Test {
 
     }
 
-    static void test(){
-    }
 
     static void testStart() throws IOException, ClassNotFoundException {
-        Class.forName("com.mysql.cj.jdbc.Driver");
+        Class.forName(DBProperties.MYSQL_DRIVER_NAME);
+        Class.forName(DBProperties.POSTGRESQL_DRIVER_NAME);
         String[] DBs = new String[]{
                 DBProperties.MYSQL,
+                DBProperties.POSTGRESQL
         };
+
         new AgentStarter(DBs);
+
         Socket mainSocket = AgentStarter.myDispatcher.getSocket("/");
         mainSocket.connect();
+
         Socket socket = AgentStarter.myDispatcher.getSocket(DBProperties.MYSQL);
-        socket.send();
         socket.connect();
+
+        socket = AgentStarter.myDispatcher.getSocket(DBProperties.POSTGRESQL);
+        socket.connect();
+
         System.in.read();
     }
 
