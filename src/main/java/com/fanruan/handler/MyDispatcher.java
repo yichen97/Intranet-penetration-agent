@@ -11,43 +11,52 @@ import org.apache.logging.log4j.Logger;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.sql.SQLException;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+
+/**
+ * @author Yichen Dai
+ */
 public class MyDispatcher {
     protected static final Logger logger = LogManager.getLogger();
 
-    // stored socket instance by dataBase name
-    private static Map<String, Socket> socketCache = new ConcurrentHashMap<>();
+    /**
+     * stored socket instance by dataBase name
+     */
+    final private static Map<String, Socket> SOCKET_MAP = new ConcurrentHashMap<>();
 
-    // stored class instance by dataBase name
-    private static Map<String, BeanCache> DBCache = new ConcurrentHashMap<>();
+    /**
+     * stored class instance by dataBase name
+     */
+    final private static Map<String, BeanCache> DB_CACHE = new ConcurrentHashMap<>();
 
-    private static Handler handler = new Handler();
+    final private static String CLOSE_NAME = "close";
 
-    private final static String[] cacheList = new String[]{
-            "com.fanruan.myJDBC.driver.MyDriver",
-            "com.fanruan.myJDBC.connection.MyConnection",
-            "com.fanruan.myJDBC.statement.MyStatement",
-            "com.fanruan.myJDBC.statement.MyPreparedStatement",
-            "com.fanruan.myJDBC.resultSet.MyResultSet",
+    final private static Handler HANDLER = new Handler();
+
+    private final static String[] CACHE_LIST = new String[]{
+            "com.fanruan.jdbc.driver.MyDriver",
+            "com.fanruan.jdbc.connection.MyConnection",
+            "com.fanruan.jdbc.statement.MyStatement",
+            "com.fanruan.jdbc.statement.MyPreparedStatement",
+            "com.fanruan.jdbc.resultset.MyResultSet",
 
     };
 
     static {
-        DBCache.put(DBProperties.MYSQL, new BeanCache(DBProperties.MYSQL_DRIVER_NAME));
-        DBCache.put(DBProperties.POSTGRESQL, new BeanCache(DBProperties.POSTGRESQL_DRIVER_NAME));
-        DBCache.put(DBProperties.ORACLE, new BeanCache(DBProperties.ORACLE_DRIVER_NAME));
-        DBCache.put(DBProperties.SQLSERVER, new BeanCache(DBProperties.SQLSERVER_DRIVER_NAME));
-        DBCache.put(DBProperties.DB2, new BeanCache(DBProperties.DB2_DRIVER_NAME));
+        DB_CACHE.put(DBProperties.MYSQL, new BeanCache(DBProperties.MYSQL_DRIVER_NAME));
+        DB_CACHE.put(DBProperties.POSTGRESQL, new BeanCache(DBProperties.POSTGRESQL_DRIVER_NAME));
+        DB_CACHE.put(DBProperties.ORACLE, new BeanCache(DBProperties.ORACLE_DRIVER_NAME));
+        DB_CACHE.put(DBProperties.SQLSERVER, new BeanCache(DBProperties.SQLSERVER_DRIVER_NAME));
+        DB_CACHE.put(DBProperties.DB2, new BeanCache(DBProperties.DB2_DRIVER_NAME));
     }
 
     public MyDispatcher(){}
 
-    public void doDispatch(RpcRequest rpcRequest, String dbName) throws InvocationTargetException, NoSuchMethodException, IllegalAccessException {
+    public void doDispatch(RpcRequest rpcRequest, String dbName) {
         logger.debug("do dispatcher");
-        BeanCache beanCache = DBCache.get(dbName);
+        BeanCache beanCache = DB_CACHE.get(dbName);
         if(beanCache == null){
             throw new RuntimeException("the class name invoked is wrong");
         }
@@ -56,44 +65,42 @@ public class MyDispatcher {
         try {
             res = invokeAsRequest(rpcRequest, beanCache);
         }catch (Exception e){
-            if (e instanceof Exception){
-                handler.sendError(socketCache.get(dbName), rpcRequest, e);
-            }
+            HANDLER.sendError(SOCKET_MAP.get(dbName), rpcRequest, e);
         }
 
         if(rpcRequest.isReply()){
-            handler.replyWithData(socketCache.get(dbName), rpcRequest, res);
+            HANDLER.replyWithData(SOCKET_MAP.get(dbName), rpcRequest, res);
         }else {
-            handler.sendOk(socketCache.get(dbName), rpcRequest);
+            HANDLER.sendOk(SOCKET_MAP.get(dbName), rpcRequest);
         }
     }
 
-    public Object invokeAsRequest(RpcRequest rpcRequest, BeanCache beanCache) throws NoSuchMethodException, InvocationTargetException, IllegalAccessException, SQLException{
-        Class clazz = rpcRequest.getServiceClass();
+    public Object invokeAsRequest(RpcRequest rpcRequest, BeanCache beanCache) throws NoSuchMethodException, InvocationTargetException, IllegalAccessException {
+        Class<?> clazz = rpcRequest.getServiceClass();
         String methodName = rpcRequest.getMethodName();
         Object[] args = rpcRequest.getArgs();
-        Class[] argTypes = rpcRequest.getArgTypes();
+        Class<?>[] argTypes = rpcRequest.getArgTypes();
         Object calledClassInstance = null;
         // The ID of the rpcRequest could be save as the ID of an instance
         // Because one instance can only been create just once for an unique rpcRequest
-        String IDtoCache = rpcRequest.getID();
-        String IDtoInvoke = rpcRequest.getIDtoInvoke();
+        String IDToCache = rpcRequest.getID();
+        String IDToInvoke = rpcRequest.getIDToInvoke();
 
         // 缓存中取类实例，若没有则创建
         String fullName = clazz.getName();
         String className = getClassName(fullName);
 
         // If BeanCache contains instance, get it; if not, create it.
-        if(IDtoInvoke == null){
+        if(IDToInvoke == null){
             try{
                 // create
                 calledClassInstance = Class.forName(fullName).newInstance();
             }catch (Exception e) {
                 e.printStackTrace();
             }
-                beanCache.cacheInstance(IDtoCache, calledClassInstance);
+                beanCache.cacheInstance(IDToCache, calledClassInstance);
         }else{
-            calledClassInstance = beanCache.getCachedInstances(IDtoInvoke, clazz);
+            calledClassInstance = beanCache.getCachedInstances(IDToInvoke, clazz);
         }
 
         Method method;
@@ -104,7 +111,7 @@ public class MyDispatcher {
             method = clazz.getDeclaredMethod(methodName, argTypes);
         }catch (Exception e){
             for(int i=0; i<argTypes.length; i++){
-                Class clz = argTypes[i];
+                Class<?> clz = argTypes[i];
                 if(DispatcherHelper.isWraps(clz)){
                     argTypes[i] = DispatcherHelper.castToPrimitiveClass(clz);
                 }
@@ -115,8 +122,8 @@ public class MyDispatcher {
 
         Object res = method.invoke(calledClassInstance, args);
 
-        if("close".equals(methodName)){
-            beanCache.removeInstances(IDtoInvoke);
+        if(CLOSE_NAME.equals(methodName)){
+            beanCache.removeInstances(IDToInvoke);
         }
 
         // Cached some instances need to be invoke later.
@@ -135,7 +142,7 @@ public class MyDispatcher {
 
 
     public boolean isInCacheList(String className){
-        for(String s : cacheList){
+        for(String s : CACHE_LIST){
             if(s.equals(className)){
                 return true;
             }
@@ -146,16 +153,18 @@ public class MyDispatcher {
     public String getClassName(String fullyQualifiedClassName){
         String[] arr = fullyQualifiedClassName.split("\\.");
         int n = arr.length;
-        if(n == 0) throw new RuntimeException("the class name invoked is wrong");
+        if(n == 0) {
+            throw new RuntimeException("the class name invoked is wrong");
+        }
         return arr[n-1];
     }
 
     public void registerSocket(String dbName, Socket socket){
-        socketCache.put(dbName, socket);
+        SOCKET_MAP.put(dbName, socket);
     }
 
     public Socket getSocket(String dbName){
-        Socket socket = socketCache.get(dbName);
+        Socket socket = SOCKET_MAP.get(dbName);
         if (socket == null){
             throw new RuntimeException("no such DataBase Name");
         }

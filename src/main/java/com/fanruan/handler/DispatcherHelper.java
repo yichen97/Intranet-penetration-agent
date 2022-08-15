@@ -4,6 +4,9 @@ package com.fanruan.handler;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * @author Yichen Dai
+ */
 public class DispatcherHelper {
 
     private static final Map<String, Class<?>> WRAPPER_CLASS_MAP = new HashMap<String, Class<?>>(){
@@ -20,22 +23,20 @@ public class DispatcherHelper {
         }
     };
 
-    public static boolean isWraps(Object o){
-        return isWraps(o.getClass());
-    }
-
-    public static boolean isWraps(Class clz){
+    public static boolean isWraps(Class<?> clz){
         return WRAPPER_CLASS_MAP.containsKey(getClassName(clz.getName()));
     }
 
-    public static Class castToPrimitiveClass(Class clz){
+    public static Class<?> castToPrimitiveClass(Class<?> clz){
         return WRAPPER_CLASS_MAP.get(getClassName(clz.getName()));
     }
 
     public static String getClassName(String fullyQualifiedClassName){
         String[] arr = fullyQualifiedClassName.split("\\.");
         int n = arr.length;
-        if(n == 0) throw new RuntimeException("the class name invoked is wrong");
+        if(n == 0) {
+            throw new RuntimeException("the class name invoked is wrong");
+        }
         return arr[n-1];
     }
 }

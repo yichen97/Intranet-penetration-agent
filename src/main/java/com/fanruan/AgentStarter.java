@@ -15,24 +15,26 @@ import org.apache.logging.log4j.Logger;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.lang.reflect.InvocationTargetException;
 import java.net.URI;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 
 
+/**
+ * @author YiChen Dai
+ */
 public class AgentStarter {
 
     protected static final Logger logger = LogManager.getLogger();
 
-    public final static Serializer serializer = new KryoSerializer();
+    public final static Serializer SERIALIZER = new KryoSerializer();
 
     public static MyDispatcher myDispatcher;
 
     public static String AgentID;
 
     public AgentStarter(String[] DBs) {
-        this.myDispatcher = new MyDispatcher();
+        myDispatcher = new MyDispatcher();
         try {
             createSocket(DBs);
         } catch (Exception e) {
@@ -67,19 +69,20 @@ public class AgentStarter {
 
             OkHttpClient okHttpClient = new OkHttpClient.Builder()
                     .dispatcher(dispatcher)
-                    .readTimeout(1, TimeUnit.MINUTES) // important for HTTP long-polling
+                    // important for HTTP long-polling
+                    .readTimeout(1, TimeUnit.MINUTES)
                     .build();
 
             options.callFactory = okHttpClient;
             options.webSocketFactory = okHttpClient;
 
             Socket defaultSocket = IO.socket(URI.create(uri), options);
-            this.myDispatcher.registerSocket("/", defaultSocket);
+            myDispatcher.registerSocket("/", defaultSocket);
             configDefaultSocket(defaultSocket);
 
             for(String dbName : DBs){
                 Socket socket = IO.socket(URI.create(uri + "/" + dbName), options);
-                this.myDispatcher.registerSocket(dbName, socket);
+                myDispatcher.registerSocket(dbName, socket);
                 configSocket(socket, dbName);
             }
 
@@ -120,7 +123,7 @@ public class AgentStarter {
         });
 
         socket.on("RPCRequest", objects -> {
-            RpcRequest rpcRequest = serializer.deserialize((byte[]) objects[0], RpcRequest.class);
+            RpcRequest rpcRequest = SERIALIZER.deserialize((byte[]) objects[0], RpcRequest.class);
             logger.debug(dbName + "-RPCRequest: " + rpcRequest.toString());
             try {
                 myDispatcher.doDispatch(rpcRequest, dbName);

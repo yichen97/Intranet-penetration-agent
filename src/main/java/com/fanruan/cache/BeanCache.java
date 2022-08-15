@@ -3,13 +3,16 @@ package com.fanruan.cache;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+/**
+ * @author Yichen Dai
+ */
 public class BeanCache {
 
     public String dbName;
     /**
-     * cache those instances asked to be established by RPCrequest
+     * cache those instances asked to be established by RPC request
      */
-    private static Map<String, Object> cache = new ConcurrentHashMap<>();
+    final private static Map<String, Object> CACHE = new ConcurrentHashMap<>();
 
     public BeanCache(String dbName){
         this.dbName = dbName;
@@ -17,7 +20,7 @@ public class BeanCache {
 
     public <T> T getCachedInstances(String ID, Class<T> clazz){
         try {
-            return  clazz.cast(cache.get(ID));
+            return  clazz.cast(CACHE.get(ID));
         }catch (Exception e){
             e.printStackTrace();
         }
@@ -25,14 +28,10 @@ public class BeanCache {
     }
 
     public void removeInstances(String ID){
-       cache.remove(ID);
+        CACHE.remove(ID);
     }
 
     public void cacheInstance(String ID, Object o){
-        cache.put(ID, o);
-    }
-
-    public boolean containsInstance(String name){
-        return cache.containsKey(name);
+        CACHE.put(ID, o);
     }
 }

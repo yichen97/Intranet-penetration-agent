@@ -1,13 +1,16 @@
-package com.fanruan.myJDBC.connection;
+package com.fanruan.jdbc.connection;
 
-import com.fanruan.myJDBC.statement.MyPreparedStatement;
-import com.fanruan.myJDBC.statement.MyStatement;
+import com.fanruan.jdbc.statement.MyPreparedStatement;
+import com.fanruan.jdbc.statement.MyStatement;
 
 import java.sql.*;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.Executor;
 
+/**
+ * @author Yichen Dai
+ */
 public class MyConnection implements Connection {
     final private Connection conn;
 
@@ -67,7 +70,6 @@ public class MyConnection implements Connection {
         return conn.isClosed();
     }
 
-    // 返回元数据信息，通过自己实现的MyDatabaseMetaData 完成部分
     @Override
     public DatabaseMetaData getMetaData() throws SQLException {
         return conn.getMetaData();

@@ -1,4 +1,5 @@
 import com.fanruan.AgentStarter;
+import com.fanruan.jdbc.driver.MyDriver;
 import com.fanruan.utils.DBProperties;
 import io.socket.client.Socket;
 
@@ -16,6 +17,13 @@ public class Test {
             e.printStackTrace();
         }
 
+    }
+
+    static void test() throws IOException, ClassNotFoundException, SQLException {
+        Class.forName(DBProperties.MYSQL_DRIVER_NAME);
+        Class.forName(DBProperties.POSTGRESQL_DRIVER_NAME);
+        MyDriver myDriver = new MyDriver();
+        System.out.println(myDriver.acceptsURL("jdbc:mysql://127.0.0.1:.3306/test"));
     }
 
 
@@ -48,7 +56,7 @@ public class Test {
         ResultSet rs1 = null;
         ResultSet rs2 = null;
         try {
-            Class.forName("com.fanruan.myJDBC.driver.MyDriver");
+            Class.forName("com.fanruan.jdbc.driver.MyDriver");
             conn = DriverManager.getConnection("jdbc:mysql://127.0.0.1:3306/test", "root", "850656");
             st = conn.createStatement();
             rs1 = st.executeQuery("select * from `student`");

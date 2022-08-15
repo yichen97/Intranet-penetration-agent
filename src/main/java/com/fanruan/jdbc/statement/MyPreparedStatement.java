@@ -1,7 +1,7 @@
-package com.fanruan.myJDBC.statement;
+package com.fanruan.jdbc.statement;
 
 
-import com.fanruan.myJDBC.resultSet.MyResultSet;
+import com.fanruan.jdbc.resultset.MyResultSet;
 
 import java.io.InputStream;
 import java.io.Reader;
@@ -10,6 +10,9 @@ import java.net.URL;
 import java.sql.*;
 import java.util.Calendar;
 
+/**
+ * @author Yichen Dai
+ */
 public class MyPreparedStatement implements PreparedStatement {
 
     final PreparedStatement pst;
@@ -105,7 +108,6 @@ public class MyPreparedStatement implements PreparedStatement {
 
     @Override
     public void setUnicodeStream(int parameterIndex, InputStream x, int length) throws SQLException {
-        pst.setUnicodeStream(parameterIndex, x, length);
     }
 
     @Override

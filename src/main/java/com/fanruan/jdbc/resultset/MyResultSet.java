@@ -1,4 +1,4 @@
-package com.fanruan.myJDBC.resultSet;
+package com.fanruan.jdbc.resultset;
 
 import java.io.InputStream;
 import java.io.Reader;

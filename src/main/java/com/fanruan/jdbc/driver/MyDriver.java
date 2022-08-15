@@ -1,12 +1,15 @@
-package com.fanruan.myJDBC.driver;
+package com.fanruan.jdbc.driver;
 
-import com.fanruan.myJDBC.connection.MyConnection;
+import com.fanruan.jdbc.connection.MyConnection;
 
 import java.sql.*;
+import java.util.Enumeration;
 import java.util.Properties;
 import java.util.logging.Logger;
 
-// 驱动在静态代码块中注册，难以代理
+/**
+ * @author Yichen Dai
+ */
 public class MyDriver implements Driver {
 
 
@@ -29,11 +32,21 @@ public class MyDriver implements Driver {
 
     @Override
     public boolean acceptsURL(String url) throws SQLException {
-        return true;
+        Enumeration<Driver> registeredDrivers = DriverManager.getDrivers();
+        while (registeredDrivers.hasMoreElements()) {
+            Driver driver = registeredDrivers.nextElement();
+            if(driver instanceof MyDriver){
+                continue;
+            }
+            if(driver.acceptsURL(url)){
+                return true;
+            }
+        }
+        return false;
     }
 
     @Override
-    public DriverPropertyInfo[] getPropertyInfo(String url, Properties info) throws SQLException {
+    public DriverPropertyInfo[] getPropertyInfo(String url, Properties info){
         return new DriverPropertyInfo[0];
     }
 
@@ -53,7 +66,7 @@ public class MyDriver implements Driver {
     }
 
     @Override
-    public Logger getParentLogger() throws SQLFeatureNotSupportedException {
+    public Logger getParentLogger(){
         return null;
     }
 }

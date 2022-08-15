@@ -1,6 +1,8 @@
 package com.fanruan.utils;
 
-
+/**
+ * @author Yichen Dai
+ */
 public class DBProperties {
     public static final String MYSQL = "mysql";
     public static final String POSTGRESQL = "postgresql";

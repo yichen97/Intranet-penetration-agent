@@ -3,6 +3,9 @@ package com.fanruan.pojo.message;
 import lombok.Data;
 import lombok.experimental.Accessors;
 
+/**
+ * @author Yichen Dai
+ */
 @Data
 @Accessors(chain = true)
 public class RpcResponse {

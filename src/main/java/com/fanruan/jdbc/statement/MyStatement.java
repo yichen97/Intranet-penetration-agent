@@ -1,6 +1,6 @@
-package com.fanruan.myJDBC.statement;
+package com.fanruan.jdbc.statement;
 
-import com.fanruan.myJDBC.resultSet.MyResultSet;
+import com.fanruan.jdbc.resultset.MyResultSet;
 
 import java.sql.*;
 
