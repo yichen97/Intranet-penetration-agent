@@ -37,13 +37,13 @@ public class Test {
 
         new AgentStarter(DBs);
 
-        Socket mainSocket = AgentStarter.myDispatcher.getSocket("/");
+        Socket mainSocket = AgentStarter.myDispatcherImpl.CACHE.getSocket("/");
         mainSocket.connect();
 
-        Socket socket = AgentStarter.myDispatcher.getSocket(DBProperties.MYSQL);
+        Socket socket = AgentStarter.myDispatcherImpl.CACHE.getSocket(DBProperties.MYSQL);
         socket.connect();
 
-        socket = AgentStarter.myDispatcher.getSocket(DBProperties.POSTGRESQL);
+        socket = AgentStarter.myDispatcherImpl.CACHE.getSocket(DBProperties.POSTGRESQL);
         socket.connect();
 
         System.in.read();

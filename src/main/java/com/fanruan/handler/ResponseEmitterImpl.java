@@ -6,10 +6,12 @@ import com.fanruan.pojo.message.RpcResponse;
 import io.socket.client.Socket;
 
 /**
+ * Utils for dispatcher to send response;
  * @author Yichen Dai
  */
-public class Handler {
+public class ResponseEmitterImpl implements ResponseEmitter{
 
+    @Override
     public void sendOk(Socket socket, RpcRequest rpcRequest){
         RpcResponse rpcResponse = new RpcResponse();
         rpcResponse.setResult(null)
@@ -20,6 +22,7 @@ public class Handler {
         socket.emit("RPCResponse", bytes);
     }
 
+    @Override
     public void sendError(Socket socket, RpcRequest rpcRequest, Exception e){
         RpcResponse rpcResponse = new RpcResponse();
         rpcResponse.setResult("Some errors happened when AgentID: " + AgentStarter.AgentID + " "
@@ -33,6 +36,7 @@ public class Handler {
         socket.emit("RPCResponse", bytes);
     }
 
+    @Override
     public void replyWithData(Socket socket, RpcRequest rpcRequest, Object res){
         RpcResponse rpcResponse = new RpcResponse();
         rpcResponse.setID(rpcRequest.getID())

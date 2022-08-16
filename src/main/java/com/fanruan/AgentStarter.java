@@ -1,6 +1,7 @@
 package com.fanruan;
 
-import com.fanruan.handler.MyDispatcher;
+import com.fanruan.cache.CacheImpl;
+import com.fanruan.handler.MyDispatcherImpl;
 import com.fanruan.pojo.message.RpcRequest;
 import com.fanruan.serializer.KryoSerializer;
 import com.fanruan.serializer.Serializer;
@@ -29,12 +30,12 @@ public class AgentStarter {
 
     public final static Serializer SERIALIZER = new KryoSerializer();
 
-    public static MyDispatcher myDispatcher;
+    public static MyDispatcherImpl myDispatcherImpl;
 
     public static String AgentID;
 
     public AgentStarter(String[] DBs) {
-        myDispatcher = new MyDispatcher();
+        myDispatcherImpl = new MyDispatcherImpl();
         try {
             createSocket(DBs);
         } catch (Exception e) {
@@ -77,12 +78,12 @@ public class AgentStarter {
             options.webSocketFactory = okHttpClient;
 
             Socket defaultSocket = IO.socket(URI.create(uri), options);
-            myDispatcher.registerSocket("/", defaultSocket);
+            MyDispatcherImpl.CACHE.registerSocket("/", defaultSocket);
             configDefaultSocket(defaultSocket);
 
             for(String dbName : DBs){
                 Socket socket = IO.socket(URI.create(uri + "/" + dbName), options);
-                myDispatcher.registerSocket(dbName, socket);
+                MyDispatcherImpl.CACHE.registerSocket(dbName, socket);
                 configSocket(socket, dbName);
             }
 
@@ -126,7 +127,7 @@ public class AgentStarter {
             RpcRequest rpcRequest = SERIALIZER.deserialize((byte[]) objects[0], RpcRequest.class);
             logger.debug(dbName + "-RPCRequest: " + rpcRequest.toString());
             try {
-                myDispatcher.doDispatch(rpcRequest, dbName);
+                myDispatcherImpl.doDispatch(rpcRequest, dbName);
             } catch (Exception e) {
                 e.printStackTrace();
             }
